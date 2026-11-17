@@ -1,5 +1,5 @@
 [project]
-name = "speaker-enclosure-calc"
+name = "speaker-designer"
 version = "0.1.0"
 description = "Interactive loudspeaker & subwoofer enclosure designer with EU driver catalog, BEM acoustics, ngspice crossover check, and CNC exports."
 readme = "README.md"
