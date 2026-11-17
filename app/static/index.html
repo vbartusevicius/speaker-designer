@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speaker Designer</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/style.css?v=16">
+<script src="/vendor/plotly.min.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Speaker Designer</div>
+  <ol class="stepper" id="stepper">
+    <li data-step="space"><b>1</b><span>Start<em>space or drivers</em></span></li>
+    <li data-step="design"><b>2</b><span>Design<em>drivers, layout &amp; sound</em></span></li>
+    <li data-step="build"><b>3</b><span>Build<em>parts, wiring &amp; CNC</em></span></li>
+  </ol>
+  <div class="top-actions">
+    <button class="ghost" id="btn-db" title="Browse drivers, upload FRD/ZMA measurements, or add custom drivers">Drivers</button>
+    <button class="ghost" id="btn-save" title="Download project as JSON">Save</button>
+    <label class="ghost filebtn" title="Open a saved project">Open<input id="btn-load" type="file" accept=".json"></label>
+    <button class="ghost" id="btn-reset" title="Start over with defaults">Reset</button>
+    <button class="ghost" id="btn-help" title="Help &amp; glossary">?</button>
+    <span id="status" class="status">loading…</span>
+  </div>
+</header>
+
+<div class="shell">
+<main id="stage">
+
+<!-- ============================== 1 START ============================== -->
+<section class="step" id="step-space">
+  <div class="step-head row-head">
+    <div>
+      <h1>What are you building?</h1>
+      <p>Pick a starting template or enter your own dimensions.</p>
+    </div>
+    <button class="primary" data-goto="design">Next: Design →</button>
+  </div>
+
+  <div class="preset-row" id="mode-choice">
+    <button class="choice" data-preset="bookshelf"><b>Bookshelf</b><span>Compact 2-way · 240 × 390 × 300 mm</span></button>
+    <button class="choice" data-preset="tower"><b>Floorstander</b><span>3-way tower · 280 × 900 × 340 mm</span></button>
+    <button class="choice" data-preset="fit"><b>Built-in space</b><span>Furniture niche or existing enclosure</span></button>
+    <button class="choice" data-preset="sub"><b>Subwoofer</b><span>Dedicated bass box · 1–4 woofers</span></button>
+    <button class="choice" data-preset="drivers"><b>From drivers</b><span>Pick drivers first, auto-size the box</span></button>
+  </div>
+
+  <div class="card drv-only" id="drv-start">
+    <h2>Choose your drivers</h2>
+    <div class="chips" id="drv-count">
+      <button data-n="1">1 · subwoofer</button>
+      <button data-n="2">2 · woofer + tweeter</button>
+      <button data-n="3">3 · woofer + mid + tweeter</button>
+      <button data-n="3b">3 · 2 woofers + tweeter</button>
+      <button data-n="4">4 · 2 woofers + mid + tweeter</button>
+      <button data-n="5">5 · 3 woofers + mid + tweeter</button>
+    </div>
+    <div class="grid3 mt">
+      <label><span class="ds-wlabel">Woofer</span><select class="drv" id="ds-woofer" data-roles="woofer,midwoofer"></select></label>
+      <label class="ds-mid">Midrange<select class="drv" id="ds-mid" data-roles="mid,midwoofer"></select></label>
+      <label class="ds-tw">Tweeter<select class="drv" id="ds-tweeter" data-roles="tweeter"></select></label>
+      <label class="ds-sub">Woofers in box<select id="ds-subn"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+    </div>
+    <div class="grid3">
+      <label>Box type<select id="ds-align"><option value="auto">Best for the woofer</option><option value="sealed">Sealed</option><option value="vented">Vented (port)</option></select></label>
+      <label>Max width mm <span class="muted">optional</span><input type="number" id="ds-w" placeholder="auto"></label>
+      <label>Max height mm <span class="muted">optional</span><input type="number" id="ds-h" placeholder="auto"></label>
+    </div>
+    <div class="row-btns">
+      <button class="primary" id="ds-go">Design the enclosure</button>
+      <button class="ghost inline" id="ds-open" hidden data-goto="design">Open in Design →</button>
+      <span id="ds-out" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="space-grid">
+    <div class="card">
+      <h2>Cabinet dimensions <span class="muted">mm</span></h2>
+      <div class="fit-only">
+        <div class="grid3">
+          <label>Inside width<input type="number" data-path="cabinet.inner_w" data-dim="w" min="100"></label>
+          <label>Inside height<input type="number" data-path="cabinet.inner_h" data-dim="h" min="100"></label>
+          <label>Inside depth<input type="number" data-path="cabinet.inner_d" data-dim="d" min="100"></label>
+        </div>
+        <label>Back wall
+          <select data-path="cabinet.back" data-dim="back">
+            <option value="solid">Solid and airtight (≥ 12 mm board)</option>
+            <option value="replace_inside">Thin — add 18 mm MDF inside</option>
+            <option value="replace_outside">Replace with 18 mm MDF behind</option>
+            <option value="keep">Keep thin back (may leak/buzz)</option>
+          </select>
+        </label>
+      </div>
+      <div class="free-only">
+        <div class="grid3">
+          <label>Outer width<input type="number" data-path="cabinet.outer_w" data-dim="w"></label>
+          <label>Outer height<input type="number" data-path="cabinet.outer_h" data-dim="h"></label>
+          <label>Outer depth<input type="number" data-path="cabinet.outer_d" data-dim="d"></label>
+        </div>
+      </div>
+      <details class="adv"><summary>Wall thickness, recess &amp; bracing</summary>
+        <div class="grid3">
+          <label>Wall thickness<input type="number" data-path="cabinet.wall_t" data-dim="wall"></label>
+          <label>Front baffle<input type="number" data-path="cabinet.baffle_t" data-dim="baffle"></label>
+          <label class="fit-only">Front recess<input type="number" data-path="cabinet.door_recess" data-dim="door"></label>
+        </div>
+        <div class="grid3">
+          <label class="fit-only">Baffle overlap<input type="number" data-path="cabinet.baffle_overlay" title="Overlap per side over carcass edges"></label>
+          <label>Bracing %<input type="number" step="0.5" data-path="cabinet.bracing_pct"></label>
+          <label>Damping fill 0–1<input type="number" step="0.1" min="0" max="1" data-path="cabinet.fill"></label>
+        </div>
+      </details>
+      <div id="space-views" class="views mt"></div>
+    </div>
+
+    <div class="card">
+      <h2>What this cabinet allows</h2>
+      <div id="space-meaning"><p class="muted">Calculating…</p></div>
+    </div>
+  </div>
+  <div class="step-nav"><span></span><button class="primary" data-goto="design">Next: Design →</button></div>
+</section>
+
+<!-- ============================== 2 DESIGN (workspace) ============================== -->
+<section class="step wide" id="step-design">
+  <!-- TOP: choices bar (full-width center top) -->
+  <div class="card top-choices">
+    <div class="active-drv-row fr-only">
+      <div id="active-drivers" class="active-drivers"></div>
+      <button type="button" class="drv-sets-btn" id="btn-pick-drivers">
+        <span>Recommended sets</span>
+        <span id="rank-status" class="muted"></span>
+      </button>
+    </div>
+    <div class="choices-bar fr-only">
+      <div class="cb-item cb-bud">
+        <span class="cb-lbl">Budget (pair)</span>
+        <div class="budget"><input type="range" id="g-budget-r" min="200" max="2000" step="25"><input type="number" id="g-budget" step="25"><span>€</span></div>
+      </div>
+      <div class="cb-item">
+        <span class="cb-lbl">Amplifier</span>
+        <div class="seg" data-goal="amp">
+          <button class="choice" data-val="passive" data-tip="Passive crossover inside each speaker: works with any stereo amplifier (requires soldering)."><b>Stereo amp</b></button>
+          <button class="choice" data-val="active" data-tip="External DSP + 6 amp channels: cleanest sound, no crossover soldering."><b>DSP + 6 ch</b></button>
+        </div>
+      </div>
+      <div class="cb-item">
+        <span class="cb-lbl">Priority</span>
+        <div class="seg" data-goal="style">
+          <button class="choice" data-val="balanced"><b>Balanced</b></button>
+          <button class="choice" data-val="deep"><b>Deep bass</b></button>
+          <button class="choice" data-val="accurate"><b>Accuracy</b></button>
+          <button class="choice" data-val="value"><b>Value</b></button>
+        </div>
+      </div>
+      <div class="cb-item">
+        <span class="cb-lbl">Bass port</span>
+        <div class="seg" data-goal="port">
+          <button class="choice" data-val="front" data-tip="Safest next to a wall."><b>Front</b></button>
+          <button class="choice" data-val="bottom" data-tip="Needs ≥ 1 port width clear underneath."><b>Bottom</b></button>
+          <button class="choice" data-val="rear" data-tip="Needs ≥ 10 cm clear behind box."><b>Rear</b></button>
+          <button class="choice" data-val="sealed" data-tip="No port: tighter, simpler box."><b>Sealed</b></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="choices-bar sub-only">
+      <div class="cb-item"><span class="cb-lbl">Subwoofer driver</span><select class="drv" data-roles="subwoofer,woofer" data-path="drivers.woofer.id"></select></div>
+      <div class="cb-item cb-sm"><span class="cb-lbl">Count</span><input type="number" min="1" max="4" data-path="drivers.woofer.count"></div>
+      <div class="cb-item cb-sm"><span class="cb-lbl">Box</span><select data-path="box.type"><option value="auto">Best</option><option value="sealed">Sealed</option><option value="vented">Vented</option></select></div>
+      <div class="cb-item cb-sm"><span class="cb-lbl">Low-pass Hz</span><input type="number" step="5" data-path="sub.lp_hz"></div>
+      <div class="cb-item"><span class="cb-lbl">Slope</span><select data-path="sub.lp_kind"><option value="LR4">24 dB/oct (LR4)</option><option value="LR2">12 dB/oct (LR2)</option><option value="BW2">12 dB/oct (BW2)</option></select></div>
+      <div class="cb-item cb-sm"><span class="cb-lbl">Amp W</span><input type="number" step="10" data-path="sub.amp_w" data-auto="metrics.amp_w"></div>
+      <div class="cb-item"><span class="cb-lbl">Bass port</span>
+        <div class="seg" data-goal="port">
+          <button class="choice" data-val="front"><b>Front</b></button>
+          <button class="choice" data-val="bottom"><b>Bottom</b></button>
+          <button class="choice" data-val="rear"><b>Rear</b></button>
+          <button class="choice" data-val="sealed"><b>Sealed</b></button>
+        </div>
+      </div>
+      <label class="chk"><input type="checkbox" data-path="sub.subsonic"> subsonic</label>
+      <button id="sub-back">← Back to speakers</button>
+    </div>
+
+    <details class="pro-bar">
+      <summary>Advanced tuning: box, crossover, baffle step &amp; layout rules</summary>
+      <div class="pro-grid">
+        <div class="pro-col">
+          <h4>Box &amp; port</h4>
+          <div class="grid2">
+            <label>Box type<select data-path="box.type"><option value="auto">Auto</option><option value="vented">Vented</option><option value="sealed">Sealed</option></select></label>
+            <label><span class="term" data-term="fb">Tuning fb</span> Hz<input type="number" step="0.5" data-path="box.fb" data-auto="metrics.fb_hz"></label>
+          </div>
+          <div class="grid3">
+            <label>Port shape<select data-path="box.port.shape"><option value="round">Round pipe</option><option value="slot">Slot</option></select></label>
+            <label>Ports<input type="number" min="1" max="3" data-path="box.port.count" data-auto="port.count"></label>
+            <label>Inner Ø mm<input type="number" data-path="box.port.d_mm" data-auto="port.d_mm"></label>
+          </div>
+          <label class="chk"><input type="checkbox" data-path="box.port.flared"> flared port kit</label>
+        </div>
+        <div class="pro-col fr-only">
+          <h4>Crossover</h4>
+          <div class="grid2">
+            <label><span class="term" data-term="fx">Woofer→mid</span> Hz<input type="number" step="10" data-path="crossover.f_wm" data-auto="design.crossover.f_wm"></label>
+            <label><span class="term" data-term="fx">→ tweeter</span> Hz<input type="number" step="10" data-path="crossover.f_mt" data-auto="design.crossover.f_mt"></label>
+          </div>
+          <label>Filter<select data-path="crossover.kind"><option value="">Auto</option><option value="LR4">Linkwitz-Riley 24 dB/oct</option><option value="LR2">Linkwitz-Riley 12 dB/oct</option><option value="BW2">Butterworth 12 dB/oct</option></select></label>
+          <label class="chk active-only"><input type="checkbox" data-path="crossover.tweeter_protect"> tweeter protection cap</label>
+          <button class="wide mt-s" id="t-xo-auto">↺ Reset crossover to auto</button>
+        </div>
+        <div class="pro-col fr-only">
+          <h4>Listening &amp; baffle step</h4>
+          <div class="grid2">
+            <label>Distance mm<input type="number" step="100" data-path="sim.distance_mm"></label>
+            <label>Test power W<input type="number" step="5" data-path="sim.design_power_w"></label>
+          </div>
+          <div class="grid4">
+            <label>Ext L<input type="number" data-path="sim.baffle_extend_mm.left"></label>
+            <label>R<input type="number" data-path="sim.baffle_extend_mm.right"></label>
+            <label>T<input type="number" data-path="sim.baffle_extend_mm.top"></label>
+            <label>B<input type="number" data-path="sim.baffle_extend_mm.bottom"></label>
+          </div>
+        </div>
+        <div class="pro-col">
+          <h4>Layout rules</h4>
+          <label>Style<select data-path="layout.style"><option value="auto">Auto</option><option value="column">Column</option><option value="row">Row</option><option value="vertical">Vertical</option></select></label>
+          <div class="grid2">
+            <label>Min MDF gap mm<input type="number" step="1" min="0" data-path="layout.min_web_mm"></label>
+            <label>Edge round mm<input type="number" data-path="sim.edge_radius_mm"></label>
+          </div>
+          <button id="t-relayout" class="wide mt-s">↺ Auto-layout again</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <!-- CENTER: stage -->
+  <div class="ws-center">
+    <div class="ws-toolbar">
+      <button class="primary fr-only" data-opt="maximize" title="Tunes layout, port and crossover together for the flattest response and clean bass.">Auto-optimize</button>
+      <button class="fr-only" data-opt="tune" title="Tunes crossover frequencies, levels, polarity and filter type without moving drivers or port.">Crossover only</button>
+      <button id="t-undo2" title="Undo the last change">↶ Undo</button>
+      <button id="t-bem" class="fr-only" title="Solve full 3D cabinet acoustics with boundary elements (bempp-cl, 2–4 min).">Verify with BEM</button>
+      <span class="spacer"></span>
+      <span id="t-xo-pill" class="pill fr-only"></span>
+      <span id="t-build-pill" class="pill"></span>
+      <button id="t-relayout2" title="Reset driver positions to default layout">↺ Reset layout</button>
+      <button class="primary" data-goto="build">Build &amp; export →</button>
+    </div>
+
+    <div id="t-optres"></div>
+    <div id="t-metrics" class="metrics four"></div>
+    <div id="t-toast"></div>
+    <div id="t-alerts"></div>
+
+    <div class="ws-stage">
+      <div class="card stage-baffle">
+        <div class="card-head">
+          <h2>Front layout <span class="muted">drag drivers · arrow keys</span></h2>
+          <div class="toggles"><label class="chk"><input type="checkbox" id="v-clear" checked> gaps</label><label class="chk"><input type="checkbox" id="v-bolts" checked> screws</label></div>
+        </div>
+        <div id="t-views" class="views"></div>
+      </div>
+
+      <div class="card stage-chart">
+        <div class="charttabs" id="charttabs">
+          <button data-chart="spl" class="active">Sound</button>
+          <button data-chart="box" class="fr-only">Bass box</button>
+          <button data-chart="port">Port</button>
+          <button data-chart="maxspl">Max SPL</button>
+          <button data-chart="exc">Cone travel</button>
+          <button data-chart="imp">Impedance</button>
+          <button data-chart="gd">Group delay</button>
+          <button data-chart="diff" class="fr-only">Diffraction</button>
+        </div>
+        <div id="chart" class="chart"></div>
+        <details class="explain-wrap"><summary>How to read this chart</summary><div class="explain" id="chart-explain"></div></details>
+      </div>
+    </div>
+
+    <div class="ws-lower">
+      <details class="card" id="t-port-card"><summary class="card-head"><b>Bass port details</b> <span class="muted" id="t-port-short"></span></summary>
+        <div class="row-btns mt"><button id="t-port-best">Find quietest port</button></div>
+        <div id="t-port" class="mt"></div>
+      </details>
+      <details class="card" id="t-sections-card"><summary><b>3D &amp; internal sections</b> <span class="muted">damping, mid chamber, port depth</span></summary>
+        <div id="t-sections" class="views mt"></div>
+      </details>
+    </div>
+
+    <div class="step-nav"><button data-goto="space">← Back: Start</button><button class="primary" data-goto="build">Next: Build &amp; export →</button></div>
+  </div>
+</section>
+
+<!-- ============================== 3 BUILD (tabbed) ============================== -->
+<section class="step" id="step-build">
+  <div class="step-head row-head">
+    <div>
+      <h1>Build &amp; export</h1>
+      <p id="b-sub">Everything needed to buy parts, wire the crossover and cut the panels.</p>
+    </div>
+    <div class="row-btns">
+      <button data-dl="zip" class="primary">⬇ Download project ZIP</button>
+      <button class="ghost" onclick="window.print()">Print</button>
+    </div>
+  </div>
+
+  <div class="tabs-bar" id="build-tabs">
+    <button class="active" data-btab="bom">1. Shopping list</button>
+    <button data-btab="xo">2. Wiring &amp; crossover</button>
+    <button data-btab="cnc">3. CNC &amp; panels</button>
+    <button data-btab="check">4. Checklist &amp; summary</button>
+  </div>
+
+  <div class="btab active" id="btab-bom">
+    <div class="card"><h2>Shopping list <span class="muted">(pair)</span></h2><div id="b-bom"></div></div>
+  </div>
+
+  <div class="btab" id="btab-xo">
+    <div class="card"><h2>Wiring &amp; crossover</h2><div id="b-xo"></div></div>
+  </div>
+
+  <div class="btab" id="btab-cnc">
+    <div class="card">
+      <div class="card-head">
+        <h2>Export files</h2>
+        <div class="row-btns">
+          <button data-dl="dxf">All panels (DXF)</button>
+          <button data-dl="cutlist">Cut list (CSV)</button>
+          <button data-dl="build">Build sheet (MD)</button>
+        </div>
+      </div>
+      <details class="adv"><summary>DXF layers &amp; machining notes</summary><p class="hint"><code>OUTLINE</code> profile · <code>CUT_THROUGH</code> holes · <code>POCKET_x.xMM</code> flush rebates · <code>DRILL_x.xMM</code> pilot holes · <code>CHAMFER_REAR</code> 45° rear relief. SVGs are 1:1.</p></details>
+    </div>
+    <div class="card"><h2>Panels</h2><div id="b-parts" class="parts"></div></div>
+  </div>
+
+  <div class="btab" id="btab-check">
+    <div class="card"><h2>Step-by-step checklist</h2><div id="b-steps"></div></div>
+    <div id="ov" class="mt"></div>
+  </div>
+
+  <div class="step-nav"><button data-goto="design">← Back: Design</button><span></span></div>
+</section>
+
+</main>
+</div>
+
+<aside id="drawer" class="drawer" hidden>
+  <div class="drawer-head"><b>Help &amp; Glossary</b><button class="ghost" id="drawer-close">✕</button></div>
+  <div id="help" class="help"></div>
+  <h3>Glossary</h3>
+  <input id="gl-q" placeholder="Search terms… (e.g. Qts, port, LR4)">
+  <dl id="gl-list" class="gloss"></dl>
+</aside>
+<div id="tip" class="tip" hidden></div>
+
+<dialog id="drv-picker-dialog">
+  <div class="dlg-head">
+    <h2>Choose drivers <span id="rank-count" class="muted"></span></h2>
+    <label class="chk"><input type="checkbox" id="g-auto" checked> auto-pick best match</label>
+    <button id="drv-picker-close" class="ghost">✕</button>
+  </div>
+  <div class="dlg-body">
+    <div class="picker-filters">
+      <label>Ways<select id="g-ways"><option value="3">3-way</option><option value="2">2-way</option><option value="any">Either</option></select></label>
+      <label>Minimum quality<select id="g-tier"><option value="1">Any</option><option value="2">Budget+</option><option value="3">Good+</option><option value="4">Very good+</option><option value="5">High-end</option></select></label>
+      <label class="chk"><input type="checkbox" id="g-stock"> in stock only</label>
+      <label class="chk"><input type="checkbox" id="g-dual"> allow dual woofers</label>
+    </div>
+    <div id="rank-list" class="rank-grid"></div>
+    <details class="adv mt"><summary>Pick drivers manually (Woofer / Midrange / Tweeter)</summary>
+      <div class="grid3 mt">
+        <label>Woofer<select class="drv" data-roles="woofer,midwoofer" data-path="drivers.woofer.id"></select></label>
+        <label>Midrange<select class="drv" data-roles="mid,midwoofer" data-none="1" data-path="drivers.mid.id"></select></label>
+        <label>Tweeter<select class="drv" data-roles="tweeter" data-path="drivers.tweeter.id"></select></label>
+      </div>
+      <label style="max-width:180px">Woofers per speaker<input type="number" min="1" max="4" data-path="drivers.woofer.count"></label>
+    </details>
+  </div>
+</dialog>
+
+<dialog id="db-dialog">
+  <div class="dlg-head">
+    <h2 id="db-title">Drivers catalog</h2>
+    <div class="seg" id="db-mode-tabs" hidden>
+      <button type="button" class="choice on" data-dbmode="browse"><b>Catalog</b></button>
+      <button type="button" class="choice" data-dbmode="replace"><b>Replacements</b></button>
+    </div>
+    <input id="db-search" class="dlg-search" placeholder="Search model, SKU, brand (e.g. SB23, RSS265)…">
+    <select id="db-role"><option value="">all types</option><option value="woofer">woofer</option><option value="midwoofer">midwoofer</option><option value="mid">mid</option><option value="tweeter">tweeter</option><option value="subwoofer">subwoofer</option></select>
+    <label class="chk" style="margin:0;white-space:nowrap"><input type="checkbox" id="db-eu"> EU shop only</label>
+    <button id="db-clear-mid" class="mini" hidden>None (2-way)</button>
+    <button id="db-fetch-prices" class="rw-only" title="Fetch live EUR prices &amp; stock from EU shops (SoundImports)">Fetch EU prices</button>
+    <button id="db-close" class="ghost">✕</button>
+  </div>
+  <div class="dlg-body">
+    <div id="db-price-status"></div>
+    <div id="db-rep-banner" class="rep-target" hidden></div>
+    <div class="row-btns" style="justify-content:space-between;align-items:center;margin:0 0 8px">
+      <span id="db-count" class="muted" style="font-size:12px"></span>
+      <span class="hint rw-only" style="margin:0">Click any card for full datasheet specs &amp; FRD/ZMA upload.</span>
+    </div>
+    <div id="db-cards" class="rank-grid"></div>
+    <div class="row-btns"><button id="db-more" hidden>Show more drivers</button></div>
+    <p class="hint ro-only">This public instance is read-only. Self-host to add custom drivers, fetch live prices, or upload measured files.</p>
+    <details class="adv rw-only"><summary><b>Add a custom driver</b> (from datasheet)</summary>
+      <p class="hint">Cms, Mms, Bl, Rms and efficiency are derived automatically. Sizes in mm.</p>
+      <form id="db-form" class="dbform"></form>
+      <button id="db-save" class="primary">Save driver</button>
+    </details>
+  </div>
+</dialog>
+
+<dialog id="drv-detail-dialog">
+  <div class="dlg-head"><h2 id="dd-title">Driver specifications</h2><button id="dd-close" class="ghost">✕</button></div>
+  <div class="dlg-body" id="dd-body"></div>
+</dialog>
+<script type="module" src="/static/js/main.js?v=16"></script>
+</body>
+</html>

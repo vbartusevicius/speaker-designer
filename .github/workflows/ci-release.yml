@@ -1,0 +1,129 @@
+name: CI, Docker Hub & Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      sync_prices:
+        description: "Also refresh live EUR prices for curated drivers in app/data/drivers.json"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync-and-test:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      driver_summary: ${{ steps.sync.outputs.summary }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set release tag (YYYY.MM.DD.HHMM UTC)
+        id: tag
+        run: echo "tag=$(date -u +'%Y.%m.%d.%H%M')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync latest unified driver catalog (app/data/drivers.json)
+        id: sync
+        run: |
+          FLAGS=""
+          if [ "${{ inputs.sync_prices }}" = "true" ]; then FLAGS="--prices"; fi
+          if SUMMARY=$(python3 scripts/sync_drivers.py $FLAGS); then
+            echo "$SUMMARY"
+            echo "summary=$(echo "$SUMMARY" | tr '\n' '; ')" >> "$GITHUB_OUTPUT"
+          else
+            echo "Sync failed; using committed app/data/drivers.json."
+            echo "summary=Using committed driver catalog" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload synced driver catalog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: synced-drivers
+          path: app/data/drivers.json
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test Docker image (Poetry DEV=1)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: speaker-enclosure-calc:test
+          build-args: |
+            DEV=1
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run mypy & pytest inside Docker container
+        run: |
+          docker run --rm speaker-enclosure-calc:test mypy app
+          docker run --rm speaker-enclosure-calc:test pytest -q
+
+  publish-and-release:
+    needs: sync-and-test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.sync-and-test.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore synced driver catalog into image context
+        uses: actions/download-artifact@v4
+        with:
+          name: synced-drivers
+          path: app/data
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push Docker Hub image (Poetry)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc:${{ env.TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc:latest
+          build-args: |
+            DEV=0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Publish GitHub Release with embedded drivers.json
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Release ${{ env.TAG }}
+          body: |
+            Automated build and release tagged `${{ env.TAG }}`.
+
+            ### Docker Hub
+            ```bash
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc:${{ env.TAG }}
+            docker run --rm -p 8000:8000 ${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc:${{ env.TAG }}
+            ```
+
+            ### Embedded driver catalog
+            - ${{ needs.sync-and-test.outputs.driver_summary }}
+            - Attached: `drivers.json` (curated EU-priced drivers + `driver-base` CC BY 4.0 catalog with SoundImports links).
+          files: app/data/drivers.json

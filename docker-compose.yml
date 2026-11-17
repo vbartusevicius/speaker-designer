@@ -1,0 +1,15 @@
+services:
+  speaker-calc:
+    build:
+      context: .
+      args:
+        DEV: "1"
+    image: speaker-enclosure-calc:latest
+    ports:
+      - "8000:8000"
+    environment:
+      CUSTOM_DRIVERS_PATH: /srv/userdata/custom_drivers.json
+      MEASUREMENTS_PATH: /srv/userdata/measurements
+    volumes:
+      - ./userdata:/srv/userdata
+    restart: unless-stopped
