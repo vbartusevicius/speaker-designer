@@ -35,7 +35,7 @@ STATIC = Path(__file__).parent / "static"
 PLOTLY_JS = Path(plotly.__file__).parent / "package_data" / "plotly.min.js"
 READ_ONLY = os.environ.get("READ_ONLY", "0") == "1"
 
-app = FastAPI(title="Speaker Enclosure Calculator", version="1.0.0")
+app = FastAPI(title="Speaker Designer", version="1.0.0")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 

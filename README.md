@@ -12,7 +12,7 @@ docker compose exec speaker-calc pytest -q
 Or run a published image directly from Docker Hub (tagged `YYYY.MM.DD.HHMM` and `latest`):
 
 ```bash
-docker run --rm -p 8000:8000 valentas/speaker-enclosure-calc:latest
+docker run --rm -p 8000:8000 valentas/speaker-designer:latest
 ```
 
 ---
@@ -50,7 +50,7 @@ Four focused tabs: **Shopping list** (pair BOM with links and totals), **Wiring 
   python scripts/sync_drivers.py             # update app/data/drivers.json from driver-base + SoundImports sitemap
   python scripts/sync_drivers.py --prices    # also refresh live EUR prices & stock for curated drivers
   ```
-- **GitHub CI/CD (`.github/workflows/ci-release.yml`):** automatically syncs `app/data/drivers.json`, runs `mypy` + `pytest` inside the Poetry Docker image, publishes `<dockerhub-user>/speaker-enclosure-calc:<YYYY.MM.DD.HHMM>` + `:latest` to Docker Hub (requires `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repo secrets), and attaches `drivers.json` to the GitHub Release.
+- **GitHub CI/CD (`.github/workflows/ci-release.yml`):** automatically syncs `app/data/drivers.json`, runs `mypy` + `pytest` inside the Poetry Docker image, publishes `valentas/speaker-designer:<YYYY.MM.DD.HHMM>` + `:latest` to Docker Hub (requires `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repo secrets), and attaches `drivers.json` to the GitHub Release.
 
 ---
 

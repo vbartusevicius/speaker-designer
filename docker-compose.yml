@@ -4,7 +4,7 @@ services:
       context: .
       args:
         DEV: "1"
-    image: speaker-enclosure-calc:latest
+    image: speaker-designer:latest
     ports:
       - "8000:8000"
     environment:

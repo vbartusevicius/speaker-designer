@@ -60,7 +60,7 @@ jobs:
         with:
           context: .
           load: true
-          tags: speaker-enclosure-calc:test
+          tags: speaker-designer:test
           build-args: |
             DEV=1
           cache-from: type=gha
@@ -68,8 +68,8 @@ jobs:
 
       - name: Run mypy & pytest inside Docker container
         run: |
-          docker run --rm speaker-enclosure-calc:test mypy app
-          docker run --rm speaker-enclosure-calc:test pytest -q
+          docker run --rm speaker-designer:test mypy app
+          docker run --rm speaker-designer:test pytest -q
 
   publish-and-release:
     needs: sync-and-test
@@ -102,8 +102,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc:${{ env.TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/speaker-designer:${{ env.TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/speaker-designer:latest
           build-args: |
             DEV=0
           cache-from: type=gha
@@ -119,8 +119,8 @@ jobs:
 
             ### Docker Hub
             ```bash
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc:${{ env.TAG }}
-            docker run --rm -p 8000:8000 ${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc:${{ env.TAG }}
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/speaker-designer:${{ env.TAG }}
+            docker run --rm -p 8000:8000 ${{ secrets.DOCKERHUB_USERNAME }}/speaker-designer:${{ env.TAG }}
             ```
 
             ### Embedded driver catalog

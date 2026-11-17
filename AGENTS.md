@@ -16,5 +16,5 @@
   - Local dev & test: `python3.12 -m venv .venv && .venv/bin/pip install poetry==2.5.1 && .venv/bin/poetry install && .venv/bin/pytest -q`
   - Docker run & test: `docker compose up -d --build` (`http://localhost:8000`) and `docker compose exec speaker-calc pytest -q`
   - Sync drivers: `python scripts/sync_drivers.py [--prices]`
-  - CI/Release: `.github/workflows/ci-release.yml` syncs `app/data/drivers.json`, runs `mypy` + `pytest` inside Poetry Docker (`DEV=1`), publishes Docker Hub `${{ secrets.DOCKERHUB_USERNAME }}/speaker-enclosure-calc` tagged `YYYY.MM.DD.HHMM` + `latest`, and attaches `drivers.json` to the GitHub Release.
+  - CI/Release: `.github/workflows/ci-release.yml` syncs `app/data/drivers.json`, runs `mypy` + `pytest` inside Poetry Docker (`DEV=1`), publishes Docker Hub `${{ secrets.DOCKERHUB_USERNAME }}/speaker-designer` tagged `YYYY.MM.DD.HHMM` + `latest`, and attaches `drivers.json` to the GitHub Release.
 - **Browser verification:** Playwright against `http://localhost:8000` — verify zero `pageerror`/console errors and `document.documentElement.scrollWidth <= window.innerWidth`.

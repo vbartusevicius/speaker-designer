@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /srv
 RUN apt-get update && apt-get install -y --no-install-recommends ngspice && rm -rf /var/lib/apt/lists/*
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml poetry.lock README.md ./
 ARG DEV=0
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
  && pip install --no-cache-dir "poetry==${POETRY_VERSION}" \
